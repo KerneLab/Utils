@@ -234,6 +234,8 @@ public class OracleSQLExporter extends DataWriter
 
 	public static final String	UPDATE_MODE	= "update";
 
+	public static final String	MERGE_MODE	= "merge";
+
 	public static int			LINE_SIZE	= 500;
 
 	private static void debug() throws FileNotFoundException, SQLException
@@ -244,7 +246,8 @@ public class OracleSQLExporter extends DataWriter
 		e.setKit(dataBase.getSQLKit());
 
 		e.setDataFile(new File("./dat/demo_table.sql"), false, "UTF-8");
-		e.resetTableRule("demo_table", "ORDER BY id").resetTableExportColumns().exportInserts().close();
+		e.resetTableRule("demo_table", "ORDER BY id").resetTableExportColumns().resetTablePrimaryKeys("id")
+				.exportMerges().close();
 
 		Tools.debug("DONE.");
 	}
@@ -261,7 +264,7 @@ public class OracleSQLExporter extends DataWriter
 
 		if (product)
 		{
-			Entrance ent = new Entrance().gather(args);
+			Entrance ent = new Entrance().handle(args);
 
 			String table = ent.parameter("table");
 			List<String> columns = ent.parameters("columns", true);
@@ -289,7 +292,7 @@ public class OracleSQLExporter extends DataWriter
 					}
 					else
 					{
-						mode = UPDATE_MODE;
+						mode = MERGE_MODE;
 					}
 				}
 				else
@@ -297,7 +300,7 @@ public class OracleSQLExporter extends DataWriter
 					mode = mode.trim().toLowerCase();
 				}
 
-				if (INSERT_MODE.equals(mode) || UPDATE_MODE.equals(mode))
+				if (INSERT_MODE.equals(mode) || UPDATE_MODE.equals(mode) || MERGE_MODE.equals(mode))
 				{
 					if (file == null)
 					{
@@ -317,9 +320,13 @@ public class OracleSQLExporter extends DataWriter
 					{
 						e.exportInserts();
 					}
-					else
+					else if (UPDATE_MODE.equals(mode))
 					{
 						e.exportUpdates();
+					}
+					else
+					{
+						e.exportMerges();
 					}
 
 					e.close();
@@ -388,6 +395,97 @@ public class OracleSQLExporter extends DataWriter
 			this.table = null;
 		}
 
+		return this;
+	}
+
+	public OracleSQLExporter exportMerges() throws SQLException
+	{
+		if (this.table != null && !this.primaryKeys.isEmpty())
+		{
+			this.fetchTableColumns();
+
+			this.print("MERGE INTO " + this.table + "\tT USING (\n");
+
+			ResultSet rs = this.fetchTableData();
+
+			String split = "";
+			while (rs.next())
+			{
+				this.print(split);
+
+				this.print("SELECT \n");
+
+				String columnSplit = "";
+
+				for (OracleColumn c : columns.values())
+				{
+					if (this.exports.contains(c.columnName) || this.primaryKeys.contains(c.columnName))
+					{
+						this.print(columnSplit);
+						this.print(c.importFormat(rs));
+						if (split.length() == 0)
+						{
+							this.print("\t");
+							this.print(c.columnName);
+						}
+						columnSplit = ",\n";
+					}
+				}
+
+				this.print(" \nFROM DUAL");
+
+				split = "\n UNION ALL \n";
+			}
+
+			this.print(")\tS \nON (");
+
+			split = "";
+			for (String key : this.primaryKeys)
+			{
+				this.print(split);
+				this.print("T." + key + "=S." + key);
+				split = "\n AND ";
+			}
+			this.print(")");
+
+			this.print(" \nWHEN MATCHED THEN UPDATE SET ");
+			split = "";
+			for (OracleColumn c : columns.values())
+			{
+				if (this.exports.contains(c.columnName) && !this.primaryKeys.contains(c.columnName))
+				{
+					this.print(split + "\n");
+					this.print("T." + c.columnName + "=S." + c.columnName);
+					split = ",";
+				}
+			}
+
+			this.print(" \nWHEN NOT MATCHED THEN INSERT (");
+			split = "";
+			for (OracleColumn c : columns.values())
+			{
+				if (this.exports.contains(c.columnName))
+				{
+					this.print(split + "\n");
+					this.print("T." + c.columnName);
+					split = ",";
+				}
+			}
+
+			this.print(") VALUES (");
+			split = "";
+			for (OracleColumn c : columns.values())
+			{
+				if (this.exports.contains(c.columnName))
+				{
+					this.print(split + "\n");
+					this.print("S." + c.columnName);
+					split = ",";
+				}
+			}
+
+			this.print(");");
+		}
 		return this;
 	}
 
