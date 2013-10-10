@@ -2,7 +2,9 @@ package org.kernelab.utils.sql;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -24,7 +26,7 @@ import org.kernelab.basis.sql.SQLKit;
 
 public class OracleSQLExporter extends DataWriter
 {
-	protected static class OracleColumn
+	public static class OracleColumn
 	{
 		public static final int						STRING_TYPE_INDEX		= 0;
 
@@ -51,24 +53,11 @@ public class OracleSQLExporter extends DataWriter
 			TYPE_INDEX_MAP.put("NCLOB", NCLOB_TYPE_INDEX);
 		}
 
-		private String								columnName;
-
-		private String								dataType;
-
-		private int									dataTypeIndex;
-
-		public OracleColumn(ResultSet rs) throws SQLException
-		{
-			this.columnName = rs.getString("COLUMN_NAME");
-			this.dataType = rs.getString("DATA_TYPE");
-			this.dataTypeIndex = TYPE_INDEX_MAP.get(this.dataType);
-		}
-
-		public String exportFormat()
+		public static String exportFormat(int typeIndex, String columnName)
 		{
 			String format = "\t" + columnName;
 
-			switch (this.dataTypeIndex)
+			switch (typeIndex)
 			{
 				case STRING_TYPE_INDEX:
 				case NUMBER_TYPE_INDEX:
@@ -89,13 +78,11 @@ public class OracleSQLExporter extends DataWriter
 			return format;
 		}
 
-		public String importFormat(ResultSet rs) throws SQLException
+		public static String importFormat(int typeIndex, String columnValue)
 		{
-			String format = rs.getString(this.columnName);
-
-			if (format == null)
+			if (columnValue == null)
 			{
-				format = "NULL";
+				columnValue = "NULL";
 			}
 			else
 			{
@@ -103,19 +90,19 @@ public class OracleSQLExporter extends DataWriter
 
 				int count = 0;
 
-				switch (this.dataTypeIndex)
+				switch (typeIndex)
 				{
 					case STRING_TYPE_INDEX:
 						buffer.append('\'');
 						count++;
-						for (int i = 0; i < format.length(); i++)
+						for (int i = 0; i < columnValue.length(); i++)
 						{
 							if (LINE_SIZE - count <= 6)
 							{
 								buffer.append("'||\n'");
 								count = 1;
 							}
-							char c = format.charAt(i);
+							char c = columnValue.charAt(i);
 
 							switch (c)
 							{
@@ -141,13 +128,13 @@ public class OracleSQLExporter extends DataWriter
 						break;
 
 					case NUMBER_TYPE_INDEX:
-						buffer.append(format);
+						buffer.append(columnValue);
 						break;
 
 					case CLOB_TYPE_INDEX:
 						buffer.append("TO_CLOB('");
 						count += 9;
-						for (int i = 0; i < format.length(); i++)
+						for (int i = 0; i < columnValue.length(); i++)
 						{
 							if (LINE_SIZE - count <= 6)
 							{
@@ -155,7 +142,7 @@ public class OracleSQLExporter extends DataWriter
 								count = 9;
 							}
 
-							char c = format.charAt(i);
+							char c = columnValue.charAt(i);
 
 							switch (c)
 							{
@@ -182,7 +169,7 @@ public class OracleSQLExporter extends DataWriter
 					case NCLOB_TYPE_INDEX:
 						buffer.append("TO_NCLOB('");
 						count += 10;
-						for (int i = 0; i < format.length(); i++)
+						for (int i = 0; i < columnValue.length(); i++)
 						{
 							if (LINE_SIZE - count <= 6)
 							{
@@ -190,7 +177,7 @@ public class OracleSQLExporter extends DataWriter
 								count = 10;
 							}
 
-							char c = format.charAt(i);
+							char c = columnValue.charAt(i);
 
 							switch (c)
 							{
@@ -215,18 +202,41 @@ public class OracleSQLExporter extends DataWriter
 						break;
 
 					case DATE_TYPE_INDEX:
-						buffer.append("TO_DATE('" + format + "','YYYY-MM-DD HH24:MI:SS')");
+						buffer.append("TO_DATE('" + columnValue + "','YYYY-MM-DD HH24:MI:SS')");
 						break;
 
 					case TIMESTAMP_TYPE_INDEX:
-						buffer.append("TO_TIMESTAMP('" + format + "','YYYY-MM-DD HH24:MI:SS.FF')");
+						buffer.append("TO_TIMESTAMP('" + columnValue + "','YYYY-MM-DD HH24:MI:SS.FF')");
 						break;
 				}
 
-				format = buffer.toString();
+				columnValue = buffer.toString();
 			}
 
-			return format;
+			return columnValue;
+		}
+
+		private String	columnName;
+
+		private String	dataType;
+
+		private int		dataTypeIndex;
+
+		public OracleColumn(ResultSet rs) throws SQLException
+		{
+			this.columnName = rs.getString("COLUMN_NAME");
+			this.dataType = rs.getString("DATA_TYPE");
+			this.dataTypeIndex = TYPE_INDEX_MAP.get(this.dataType);
+		}
+
+		public String exportFormat()
+		{
+			return exportFormat(this.dataTypeIndex, this.columnName);
+		}
+
+		public String importFormat(ResultSet rs) throws SQLException
+		{
+			return importFormat(this.dataTypeIndex, rs.getString(this.columnName));
 		}
 	}
 
@@ -245,9 +255,15 @@ public class OracleSQLExporter extends DataWriter
 		DataBase dataBase = new Oracle("localhost", 1521, "orcl", "test", "test");
 		e.setKit(dataBase.getSQLKit());
 
-		e.setDataFile(new File("./dat/demo_table.sql"), false, "UTF-8");
+		// e.setDataFile(new File("./dat/demo_table.sql"), false, "UTF-8");
+
+		Writer buffer = new StringWriter();
+		e.setWriter(buffer);
+
 		e.resetTableRule("demo_table", "ORDER BY id").resetTableExportColumns().resetTablePrimaryKeys("id")
 				.exportMerges().close();
+
+		Tools.debug(buffer.toString());
 
 		Tools.debug("DONE.");
 	}
@@ -276,7 +292,7 @@ public class OracleSQLExporter extends DataWriter
 
 			String mode = ent.parameter("mode");
 
-			String ip = ent.parameter("ip", "localhost");
+			String host = ent.parameter("host", "localhost");
 			int port = Integer.parseInt(ent.parameter("port", "1521"));
 			String db = ent.parameter("db");
 			String user = ent.parameter("user");
@@ -311,7 +327,7 @@ public class OracleSQLExporter extends DataWriter
 
 					e.setDataFile(new File(file), false, charset);
 
-					DataBase dataBase = new OracleClassic(ip, port, db, user, pass);
+					DataBase dataBase = new OracleClassic(host, port, db, user, pass);
 
 					e.setKit(dataBase.getSQLKit()).resetTableRule(table, rule).resetTableExportColumns(columns)
 							.resetTablePrimaryKeys(keys);
