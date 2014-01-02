@@ -240,13 +240,15 @@ public class OracleSQLExporter extends DataWriter
 		}
 	}
 
-	public static final String	INSERT_MODE	= "insert";
+	public static final String	INSERT_MODE		= "insert";
 
-	public static final String	UPDATE_MODE	= "update";
+	public static final String	UPDATE_MODE		= "update";
 
-	public static final String	MERGE_MODE	= "merge";
+	public static final String	MERGE_MODE		= "merge";
 
-	public static int			LINE_SIZE	= 500;
+	public static String		TABLE_COLUMNS	= "ALL_TAB_COLUMNS";
+
+	public static int			LINE_SIZE		= 500;
 
 	private static void debug() throws FileNotFoundException, SQLException
 	{
@@ -562,7 +564,8 @@ public class OracleSQLExporter extends DataWriter
 			columnsCondition = " AND COLUMN_NAME IN ('" + Tools.jointStrings("','", usingColumns) + "')";
 		}
 
-		String sql = "SELECT * FROM USER_TAB_COLUMNS WHERE TABLE_NAME=?" + columnsCondition + " ORDER BY COLUMN_ID ASC";
+		String sql = "SELECT * FROM " + TABLE_COLUMNS + " WHERE TABLE_NAME=?" + columnsCondition
+				+ " ORDER BY COLUMN_ID ASC";
 		ResultSet rs = kit.query(sql, this.table);
 		this.columns.clear();
 		while (rs.next())
