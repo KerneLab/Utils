@@ -16,9 +16,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.kernelab.basis.DataWriter;
 import org.kernelab.basis.Entrance;
 import org.kernelab.basis.Tools;
+import org.kernelab.basis.io.DataWriter;
 import org.kernelab.basis.sql.DataBase;
 import org.kernelab.basis.sql.DataBase.Oracle;
 import org.kernelab.basis.sql.DataBase.OracleClassic;
