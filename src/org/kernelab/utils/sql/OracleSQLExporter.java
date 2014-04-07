@@ -8,6 +8,8 @@ import java.io.Writer;
 import java.nio.charset.Charset;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -49,6 +51,7 @@ public class OracleSQLExporter extends DataWriter
 			TYPE_INDEX_MAP.put("CHAR", STRING_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("NUMBER", NUMBER_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("DATE", DATE_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("TIMESTAMP", TIMESTAMP_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("CLOB", CLOB_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("NCLOB", NCLOB_TYPE_INDEX);
 		}
@@ -67,15 +70,25 @@ public class OracleSQLExporter extends DataWriter
 					break;
 
 				case DATE_TYPE_INDEX:
-					format = "TO_CHAR(" + columnName + ",'YYYY-MM-DD HH24:MI:SS')" + format;
+					format = "TO_CHAR(" + columnName + ",'" + DATE_SQL_FORMAT + "')" + format;
 					break;
 
 				case TIMESTAMP_TYPE_INDEX:
-					format = "TO_CHAR(" + columnName + ",'YYYY-MM-DD HH24:MI:SS.FF')" + format;
+					format = "TO_CHAR(" + columnName + ",'" + TIMESTAMP_SQL_FORMAT + "')" + format;
 					break;
 			}
 
 			return format;
+		}
+
+		public static Integer getDataTypeIndex(String dataType)
+		{
+			return TYPE_INDEX_MAP.get(getDataTypeName(dataType));
+		}
+
+		public static String getDataTypeName(String dataType)
+		{
+			return dataType.replaceFirst("(\\w+)(?:\\(.+?\\))?", "$1").toUpperCase();
 		}
 
 		public static String importFormat(int typeIndex, String columnValue)
@@ -202,11 +215,11 @@ public class OracleSQLExporter extends DataWriter
 						break;
 
 					case DATE_TYPE_INDEX:
-						buffer.append("TO_DATE('" + columnValue + "','YYYY-MM-DD HH24:MI:SS')");
+						buffer.append("TO_DATE('" + columnValue + "','" + DATE_SQL_FORMAT + "')");
 						break;
 
 					case TIMESTAMP_TYPE_INDEX:
-						buffer.append("TO_TIMESTAMP('" + columnValue + "','YYYY-MM-DD HH24:MI:SS.FF')");
+						buffer.append("TO_TIMESTAMP('" + columnValue + "','" + TIMESTAMP_SQL_FORMAT + "')");
 						break;
 				}
 
@@ -224,31 +237,87 @@ public class OracleSQLExporter extends DataWriter
 
 		public OracleColumn(ResultSet rs) throws SQLException
 		{
-			this.columnName = rs.getString("COLUMN_NAME");
-			this.dataType = rs.getString("DATA_TYPE");
-			this.dataTypeIndex = TYPE_INDEX_MAP.get(this.dataType);
+			this(rs.getString("COLUMN_NAME"), rs.getString("DATA_TYPE"));
+		}
+
+		public OracleColumn(String columnName, String dataType)
+		{
+			this.setColumnName(columnName);
+			this.setDataType(dataType);
 		}
 
 		public String exportFormat()
 		{
-			return exportFormat(this.dataTypeIndex, this.columnName);
+			return exportFormat(this.getDataTypeIndex(), this.getColumnNameQuote());
+		}
+
+		public String getColumnName()
+		{
+			return columnName;
+		}
+
+		public String getColumnNameQuote()
+		{
+			return "\"" + this.getColumnName() + "\"";
+		}
+
+		public String getDataType()
+		{
+			return dataType;
+		}
+
+		public int getDataTypeIndex()
+		{
+			return dataTypeIndex;
 		}
 
 		public String importFormat(ResultSet rs) throws SQLException
 		{
-			return importFormat(this.dataTypeIndex, rs.getString(this.columnName));
+			return importFormat(this.getDataTypeIndex(), rs.getString(this.getColumnName()));
+		}
+
+		public String importFormat(String value)
+		{
+			return importFormat(this.getDataTypeIndex(), value);
+		}
+
+		public OracleColumn setColumnName(String columnName)
+		{
+			this.columnName = columnName;
+			return this;
+		}
+
+		public OracleColumn setDataType(String dataType)
+		{
+			this.dataType = getDataTypeName(dataType);
+			this.setDataTypeIndex(TYPE_INDEX_MAP.get(this.dataType));
+			return this;
+		}
+
+		private OracleColumn setDataTypeIndex(int dataTypeIndex)
+		{
+			this.dataTypeIndex = dataTypeIndex;
+			return this;
 		}
 	}
 
-	public static final String	INSERT_MODE		= "insert";
+	public static final String	INSERT_MODE				= "insert";
 
-	public static final String	UPDATE_MODE		= "update";
+	public static final String	UPDATE_MODE				= "update";
 
-	public static final String	MERGE_MODE		= "merge";
+	public static final String	MERGE_MODE				= "merge";
 
-	public static String		TABLE_COLUMNS	= "ALL_TAB_COLUMNS";
+	public static String		DATE_JAVA_FORMAT		= "yyyy-MM-dd HH:mm:ss";
 
-	public static int			LINE_SIZE		= 500;
+	public static String		TIMESTAMP_JAVA_FORMAT	= "yyyy-MM-dd HH:mm:ss.SSS";
+
+	public static String		DATE_SQL_FORMAT			= "YYYY-MM-DD HH24:MI:SS";
+
+	public static String		TIMESTAMP_SQL_FORMAT	= "YYYY-MM-DD HH24:MI:SS.FF";
+
+	public static String		TABLE_COLUMNS			= "ALL_TAB_COLUMNS";
+
+	public static int			LINE_SIZE				= 500;
 
 	private static void debug() throws FileNotFoundException, SQLException
 	{
@@ -361,6 +430,28 @@ public class OracleSQLExporter extends DataWriter
 		}
 	}
 
+	public static String SQLValue(Date value)
+	{
+		return OracleColumn
+				.importFormat(OracleColumn.DATE_TYPE_INDEX, Tools.getDateTimeString(value, DATE_JAVA_FORMAT));
+	}
+
+	public static String SQLValue(Number value)
+	{
+		return OracleColumn.importFormat(OracleColumn.NUMBER_TYPE_INDEX, String.valueOf(value));
+	}
+
+	public static String SQLValue(String value)
+	{
+		return OracleColumn.importFormat(OracleColumn.STRING_TYPE_INDEX, value);
+	}
+
+	public static String SQLValue(Timestamp value)
+	{
+		return OracleColumn.importFormat(OracleColumn.TIMESTAMP_TYPE_INDEX,
+				Tools.getDateTimeString(value, TIMESTAMP_JAVA_FORMAT));
+	}
+
 	private SQLKit						kit;
 
 	private String						table;
@@ -383,10 +474,10 @@ public class OracleSQLExporter extends DataWriter
 			String split = "";
 			for (OracleColumn c : columns.values())
 			{
-				if (this.exports.contains(c.columnName))
+				if (this.exports.contains(c.getColumnName()))
 				{
 					insert += split;
-					insert += c.columnName;
+					insert += c.getColumnNameQuote();
 					split = ",\n";
 				}
 			}
@@ -400,7 +491,7 @@ public class OracleSQLExporter extends DataWriter
 				split = "";
 				for (OracleColumn c : columns.values())
 				{
-					if (this.exports.contains(c.columnName))
+					if (this.exports.contains(c.getColumnName()))
 					{
 						this.print(split + "\n");
 						this.print(c.importFormat(rs));
@@ -437,14 +528,14 @@ public class OracleSQLExporter extends DataWriter
 
 				for (OracleColumn c : columns.values())
 				{
-					if (this.exports.contains(c.columnName) || this.primaryKeys.contains(c.columnName))
+					if (this.exports.contains(c.getColumnName()) || this.primaryKeys.contains(c.getColumnName()))
 					{
 						this.print(columnSplit);
 						this.print(c.importFormat(rs));
 						if (split.length() == 0)
 						{
 							this.print("\t");
-							this.print(c.columnName);
+							this.print(c.getColumnNameQuote());
 						}
 						columnSplit = ",\n";
 					}
@@ -470,10 +561,10 @@ public class OracleSQLExporter extends DataWriter
 			split = "";
 			for (OracleColumn c : columns.values())
 			{
-				if (this.exports.contains(c.columnName) && !this.primaryKeys.contains(c.columnName))
+				if (this.exports.contains(c.getColumnName()) && !this.primaryKeys.contains(c.getColumnName()))
 				{
 					this.print(split + "\n");
-					this.print("T." + c.columnName + "=S." + c.columnName);
+					this.print("T." + c.getColumnNameQuote() + "=S." + c.getColumnNameQuote());
 					split = ",";
 				}
 			}
@@ -482,10 +573,10 @@ public class OracleSQLExporter extends DataWriter
 			split = "";
 			for (OracleColumn c : columns.values())
 			{
-				if (this.exports.contains(c.columnName))
+				if (this.exports.contains(c.getColumnName()))
 				{
 					this.print(split + "\n");
-					this.print("T." + c.columnName);
+					this.print("T." + c.getColumnNameQuote());
 					split = ",";
 				}
 			}
@@ -494,10 +585,10 @@ public class OracleSQLExporter extends DataWriter
 			split = "";
 			for (OracleColumn c : columns.values())
 			{
-				if (this.exports.contains(c.columnName))
+				if (this.exports.contains(c.getColumnName()))
 				{
 					this.print(split + "\n");
-					this.print("S." + c.columnName);
+					this.print("S." + c.getColumnNameQuote());
 					split = ",";
 				}
 			}
@@ -525,10 +616,10 @@ public class OracleSQLExporter extends DataWriter
 				split = "";
 				for (OracleColumn c : columns.values())
 				{
-					if (this.exports.contains(c.columnName) && !this.primaryKeys.contains(c.columnName))
+					if (this.exports.contains(c.getColumnName()) && !this.primaryKeys.contains(c.getColumnName()))
 					{
 						this.print(split + "\n");
-						this.print(c.columnName + "=");
+						this.print(c.getColumnNameQuote() + "=");
 						this.print(c.importFormat(rs));
 						split = ",";
 					}
@@ -571,14 +662,14 @@ public class OracleSQLExporter extends DataWriter
 		while (rs.next())
 		{
 			OracleColumn column = new OracleColumn(rs);
-			this.columns.put(column.columnName, column);
+			this.columns.put(column.getColumnName(), column);
 		}
 
 		if (this.exports.isEmpty())
 		{
 			for (OracleColumn c : this.columns.values())
 			{
-				this.exports.add(c.columnName);
+				this.exports.add(c.getColumnName());
 			}
 		}
 
