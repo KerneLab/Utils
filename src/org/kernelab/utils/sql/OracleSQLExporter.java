@@ -49,9 +49,18 @@ public class OracleSQLExporter extends DataWriter
 			TYPE_INDEX_MAP.put("VARCHAR2", STRING_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("NVARCHAR2", STRING_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("CHAR", STRING_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("NCHAR", STRING_TYPE_INDEX);
+
 			TYPE_INDEX_MAP.put("NUMBER", NUMBER_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("INTEGER", NUMBER_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("INT", NUMBER_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("FLOAT", NUMBER_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("BINARY_FLOAT", NUMBER_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("BINARY_DOUBLE", NUMBER_TYPE_INDEX);
+
 			TYPE_INDEX_MAP.put("DATE", DATE_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("TIMESTAMP", TIMESTAMP_TYPE_INDEX);
+
 			TYPE_INDEX_MAP.put("CLOB", CLOB_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("NCLOB", NCLOB_TYPE_INDEX);
 		}
@@ -88,7 +97,7 @@ public class OracleSQLExporter extends DataWriter
 
 		public static String getDataTypeName(String dataType)
 		{
-			return dataType.replaceFirst("(\\w+)(?:\\(.+?\\))?", "$1").toUpperCase();
+			return dataType.replaceFirst("^(\\w+)(?:\\(.+?\\))?.*$", "$1").toUpperCase();
 		}
 
 		public static String importFormat(int typeIndex, String columnValue)
