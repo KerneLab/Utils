@@ -9,13 +9,16 @@ import java.nio.charset.Charset;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import org.kernelab.basis.Entrance;
@@ -350,6 +353,45 @@ public class OracleSQLExporter extends DataWriter
 		Tools.debug("DONE.");
 	}
 
+	public static String Insert(String table, Map<String, Object> row)
+	{
+		if (table == null || row == null || row.isEmpty())
+		{
+			return null;
+		}
+
+		StringBuilder buffer = new StringBuilder();
+
+		buffer.append("INSERT INTO ");
+		buffer.append(table);
+
+		boolean first = true;
+
+		List<String> items = new LinkedList<String>();
+
+		for (Entry<String, Object> entry : row.entrySet())
+		{
+			if (!first)
+			{
+				buffer.append(",\n");
+			}
+			else
+			{
+				first = false;
+				buffer.append(" (");
+			}
+			buffer.append(entry.getKey());
+
+			items.add(SQLValue(entry.getValue()));
+		}
+
+		buffer.append(")\n VALUES (");
+		Tools.jointStrings(buffer, ",\n", items);
+		buffer.append(");");
+
+		return buffer.toString();
+	}
+
 	/**
 	 * @param args
 	 * @throws FileNotFoundException
@@ -450,6 +492,46 @@ public class OracleSQLExporter extends DataWriter
 	public static String SQLValue(Number value)
 	{
 		return OracleColumn.importFormat(OracleColumn.NUMBER_TYPE_INDEX, String.valueOf(value));
+	}
+
+	public static String SQLValue(Object value)
+	{
+		String string = null;
+
+		if (value == null)
+		{
+			string = "NULL";
+		}
+		else if (value instanceof String)
+		{
+			string = SQLValue((String) value);
+		}
+		else if (value instanceof Number)
+		{
+			string = SQLValue((Number) value);
+		}
+		else if (value instanceof Character)
+		{
+			string = SQLValue(((Character) value).toString());
+		}
+		else if (value instanceof Date)
+		{
+			string = SQLValue((Date) value);
+		}
+		else if (value instanceof Calendar)
+		{
+			string = SQLValue(new Date(((Calendar) value).getTimeInMillis()));
+		}
+		else if (value instanceof Timestamp)
+		{
+			string = SQLValue((Timestamp) value);
+		}
+		else
+		{
+			string = SQLValue(value.toString());
+		}
+
+		return string;
 	}
 
 	public static String SQLValue(String value)
