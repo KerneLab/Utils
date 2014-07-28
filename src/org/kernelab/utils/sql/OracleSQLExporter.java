@@ -26,7 +26,7 @@ import org.kernelab.basis.Tools;
 import org.kernelab.basis.io.DataWriter;
 import org.kernelab.basis.sql.DataBase;
 import org.kernelab.basis.sql.DataBase.Oracle;
-import org.kernelab.basis.sql.DataBase.OracleClassic;
+import org.kernelab.basis.sql.DataBase.OracleClient;
 import org.kernelab.basis.sql.SQLKit;
 
 public class OracleSQLExporter extends DataWriter
@@ -44,6 +44,8 @@ public class OracleSQLExporter extends DataWriter
 		public static final int						CLOB_TYPE_INDEX			= 4;
 
 		public static final int						NCLOB_TYPE_INDEX		= 5;
+
+		public static final int						ROWID_TYPE_INDEX		= 6;
 
 		public static final Map<String, Integer>	TYPE_INDEX_MAP			= new HashMap<String, Integer>();
 
@@ -68,6 +70,37 @@ public class OracleSQLExporter extends DataWriter
 
 			TYPE_INDEX_MAP.put("CLOB", CLOB_TYPE_INDEX);
 			TYPE_INDEX_MAP.put("NCLOB", NCLOB_TYPE_INDEX);
+
+			TYPE_INDEX_MAP.put("ROWID", ROWID_TYPE_INDEX);
+			TYPE_INDEX_MAP.put("UROWID", ROWID_TYPE_INDEX);
+		}
+
+		public static int appendChar(char c, StringBuilder b, String charSet)
+		{
+			if (Character.isISOControl(c))
+			{
+				String asc = String.valueOf((int) c);
+				b.append("'||CHR(" + asc + ")||'");
+				return 11 + asc.length();
+			}
+			else if (c == '\'')
+			{
+				b.append(c);
+				b.append(c);
+				return 2;
+			}
+			else
+			{
+				b.append(c);
+				try
+				{
+					return String.valueOf(c).getBytes(charSet).length;
+				}
+				catch (UnsupportedEncodingException e)
+				{
+					return 1;
+				}
+			}
 		}
 
 		public static String exportFormat(int typeIndex, String columnName)
@@ -90,6 +123,10 @@ public class OracleSQLExporter extends DataWriter
 				case TIMESTAMP_TYPE_INDEX:
 					format = "TO_CHAR(" + columnName + ",'" + TIMESTAMP_SQL_FORMAT + "')" + format;
 					break;
+
+				case ROWID_TYPE_INDEX:
+					format = "ROWIDTOCHAR(" + columnName + ")" + format;
+					break;
 			}
 
 			return format;
@@ -106,6 +143,11 @@ public class OracleSQLExporter extends DataWriter
 		}
 
 		public static String importFormat(int typeIndex, String columnValue)
+		{
+			return importFormat(typeIndex, columnValue, Charset.defaultCharset().name());
+		}
+
+		public static String importFormat(int typeIndex, String columnValue, String charSet)
 		{
 			if (columnValue == null)
 			{
@@ -129,27 +171,10 @@ public class OracleSQLExporter extends DataWriter
 								buffer.append("'||\n'");
 								count = 1;
 							}
+
 							char c = columnValue.charAt(i);
 
-							switch (c)
-							{
-								case '\'':
-									buffer.append(c);
-									buffer.append(c);
-									count += 2;
-									break;
-
-								case '\n':
-									buffer.append("'||CHR(10)||'");
-									count += 13;
-									break;
-
-								default:
-									buffer.append(c);
-									count++;
-									break;
-							}
-
+							count += appendChar(c, buffer, charSet);
 						}
 						buffer.append('\'');
 						break;
@@ -171,24 +196,7 @@ public class OracleSQLExporter extends DataWriter
 
 							char c = columnValue.charAt(i);
 
-							switch (c)
-							{
-								case '\'':
-									buffer.append(c);
-									buffer.append(c);
-									count += 2;
-									break;
-
-								case '\n':
-									buffer.append("'||CHR(10)||'");
-									count += 13;
-									break;
-
-								default:
-									buffer.append(c);
-									count++;
-									break;
-							}
+							count += appendChar(c, buffer, charSet);
 						}
 						buffer.append("')");
 						break;
@@ -206,24 +214,7 @@ public class OracleSQLExporter extends DataWriter
 
 							char c = columnValue.charAt(i);
 
-							switch (c)
-							{
-								case '\'':
-									buffer.append(c);
-									buffer.append(c);
-									count += 2;
-									break;
-
-								case '\n':
-									buffer.append("'||CHR(10)||'");
-									count += 13;
-									break;
-
-								default:
-									buffer.append(c);
-									count++;
-									break;
-							}
+							count += appendChar(c, buffer, charSet);
 						}
 						buffer.append("')");
 						break;
@@ -234,6 +225,10 @@ public class OracleSQLExporter extends DataWriter
 
 					case TIMESTAMP_TYPE_INDEX:
 						buffer.append("TO_TIMESTAMP('" + columnValue + "','" + TIMESTAMP_SQL_FORMAT + "')");
+						break;
+
+					case ROWID_TYPE_INDEX:
+						buffer.append("CHARTOROWID('" + columnValue + "')");
 						break;
 				}
 
@@ -285,14 +280,14 @@ public class OracleSQLExporter extends DataWriter
 			return dataTypeIndex;
 		}
 
-		public String importFormat(ResultSet rs) throws SQLException
+		public String importFormat(ResultSet rs, String charSet) throws SQLException
 		{
-			return importFormat(this.getDataTypeIndex(), rs.getString(this.getColumnName()));
+			return importFormat(this.getDataTypeIndex(), rs.getString(this.getColumnName()), charSet);
 		}
 
-		public String importFormat(String value)
+		public String importFormat(String value, String charSet)
 		{
-			return importFormat(this.getDataTypeIndex(), value);
+			return importFormat(this.getDataTypeIndex(), value, charSet);
 		}
 
 		public OracleColumn setColumnName(String columnName)
@@ -416,13 +411,11 @@ public class OracleSQLExporter extends DataWriter
 
 			String mode = ent.parameter("mode");
 
-			String host = ent.parameter("host", "localhost");
-			int port = Integer.parseInt(ent.parameter("port", "1521"));
-			String db = ent.parameter("db");
 			String user = ent.parameter("user");
 			String pass = ent.parameter("pass");
+			String tns = ent.parameter("tns");
 
-			if (table != null && db != null && user != null && pass != null)
+			if (table != null && tns != null && user != null && pass != null)
 			{
 				if (mode == null)
 				{
@@ -449,9 +442,11 @@ public class OracleSQLExporter extends DataWriter
 
 					OracleSQLExporter e = new OracleSQLExporter();
 
+					e.setCharsetName(charset);
+
 					e.setDataFile(new File(file), false, charset);
 
-					DataBase dataBase = new OracleClassic(host, port, db, user, pass);
+					DataBase dataBase = new OracleClient(tns, user, pass);
 
 					e.setKit(dataBase.getSQLKit()).resetTableRule(table, rule).resetTableExportColumns(columns)
 							.resetTablePrimaryKeys(keys);
@@ -587,7 +582,7 @@ public class OracleSQLExporter extends DataWriter
 					if (this.exports.contains(c.getColumnName()))
 					{
 						this.print(split + "\n");
-						this.print(c.importFormat(rs));
+						this.print(c.importFormat(rs, this.getCharsetName()));
 						split = ",";
 					}
 				}
@@ -624,7 +619,7 @@ public class OracleSQLExporter extends DataWriter
 					if (this.exports.contains(c.getColumnName()) || this.primaryKeys.contains(c.getColumnName()))
 					{
 						this.print(columnSplit);
-						this.print(c.importFormat(rs));
+						this.print(c.importFormat(rs, this.getCharsetName()));
 						if (split.length() == 0)
 						{
 							this.print("\t");
@@ -713,7 +708,7 @@ public class OracleSQLExporter extends DataWriter
 					{
 						this.print(split + "\n");
 						this.print(c.getColumnNameQuote() + "=");
-						this.print(c.importFormat(rs));
+						this.print(c.importFormat(rs, this.getCharsetName()));
 						split = ",";
 					}
 				}
@@ -724,7 +719,7 @@ public class OracleSQLExporter extends DataWriter
 				{
 					this.print(split + "\n");
 					this.print(key + "=");
-					this.print(this.columns.get(key).importFormat(rs));
+					this.print(this.columns.get(key).importFormat(rs, this.getCharsetName()));
 					split = " AND ";
 				}
 
