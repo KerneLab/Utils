@@ -7,6 +7,8 @@ import java.util.regex.Matcher;
 
 import org.kernelab.basis.Tools;
 import org.kernelab.basis.Variable;
+import org.kernelab.basis.io.CharsTransfer;
+import org.kernelab.basis.io.StringBuilderWriter;
 
 public class Regex
 {
@@ -25,36 +27,21 @@ public class Regex
 
 				int size = Variable.asInteger(System.getProperty("init.buff.size"), 10000);
 
-				StringBuilder text = new StringBuilder(size);
-
 				Reader reader = new InputStreamReader(System.in);
 
-				char[] buff = new char[1000];
+				StringBuilderWriter writer = new StringBuilderWriter(size);
 
-				int read = -1;
+				new CharsTransfer(reader, writer).run();
 
 				try
 				{
-					while ((read = reader.read(buff)) != -1)
-					{
-						text.append(buff, 0, read);
-					}
+					reader.close();
 				}
 				catch (IOException e)
 				{
 				}
-				finally
-				{
-					try
-					{
-						reader.close();
-					}
-					catch (Exception e)
-					{
-					}
-				}
 
-				CharSequence result = match(text, regex, flags, replace);
+				CharSequence result = match(writer.getBuilder(), regex, flags, replace);
 
 				if (result != null)
 				{
@@ -103,11 +90,8 @@ public class Regex
 					{
 						buffer = new StringBuilder();
 					}
-					if (buffer.length() > 0)
-					{
-						buffer.append(ls);
-					}
 					buffer.append(matcher.group());
+					buffer.append(ls);
 				}
 
 				return buffer;
