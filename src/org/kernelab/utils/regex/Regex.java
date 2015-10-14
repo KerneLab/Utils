@@ -12,17 +12,48 @@ import org.kernelab.basis.io.StringBuilderWriter;
 
 public class Regex
 {
+	/**
+	 * regex: the regular expression<br />
+	 * flags: combination of musicx<br />
+	 * split: two hex-char such as 0A<br />
+	 * replace: $ as the back-reference
+	 * 
+	 * @param args
+	 */
 	public static void main(String[] args)
 	{
 		if (args != null && args.length >= 2)
 		{
-			String regex = args[0], flags = args[1], replace = null;
+			String regex = args[0], flags = args[1], split = null, replace = null;
 
 			if (regex != null)
 			{
 				if (args.length > 2)
 				{
-					replace = args[2];
+					split = args[2];
+				}
+
+				if (split == null)
+				{
+					split = System.getProperty("line.separator");
+				}
+				else
+				{
+					StringBuilder buf = new StringBuilder();
+
+					for (byte b : Tools.dumpBytes(Tools.splitCharSequence(split, 2)))
+					{
+						buf.append((char) b);
+					}
+
+					split = buf.toString();
+				}
+
+				split = split == null ? "" : split;
+
+				if (args.length > 3)
+				{
+					replace = args[3];
 				}
 
 				int size = Variable.asInteger(System.getProperty("init.buff.size"), 10000);
@@ -41,7 +72,7 @@ public class Regex
 				{
 				}
 
-				CharSequence result = match(writer.getBuilder(), regex, flags, replace);
+				CharSequence result = match(writer.getBuilder(), regex, flags, split, replace);
 
 				if (result != null)
 				{
@@ -51,7 +82,7 @@ public class Regex
 		}
 	}
 
-	public static CharSequence match(CharSequence text, String regex, String flags, String replace)
+	public static CharSequence match(CharSequence text, String regex, String flags, String split, String replace)
 	{
 		boolean global = flags != null && flags.indexOf('g') != -1;
 
@@ -59,21 +90,56 @@ public class Regex
 
 		if (replace != null)
 		{
-			if (global)
+			boolean extract = flags != null && flags.indexOf('x') != -1;
+
+			if (extract)
 			{
-				StringBuffer buffer = new StringBuffer(text.length());
-
-				while (matcher.find())
+				if (global)
 				{
-					matcher.appendReplacement(buffer, replace);
-				}
-				matcher.appendTail(buffer);
+					StringBuilder buffer = null;
 
-				return buffer;
+					while (matcher.find())
+					{
+						if (buffer == null)
+						{
+							buffer = new StringBuilder(text.length() / 10);
+						}
+						buffer.append(matcher.group().replaceFirst(regex, replace));
+						buffer.append(split);
+					}
+
+					return buffer;
+				}
+				else
+				{
+					if (matcher.find())
+					{
+						return matcher.group().replaceFirst(regex, replace);
+					}
+					else
+					{
+						return null;
+					}
+				}
 			}
 			else
 			{
-				return matcher.replaceFirst(replace);
+				if (global)
+				{
+					StringBuffer buffer = new StringBuffer(text.length());
+
+					while (matcher.find())
+					{
+						matcher.appendReplacement(buffer, replace);
+					}
+					matcher.appendTail(buffer);
+
+					return buffer;
+				}
+				else
+				{
+					return matcher.replaceFirst(replace);
+				}
 			}
 		}
 		else
@@ -82,8 +148,6 @@ public class Regex
 			{
 				StringBuilder buffer = null;
 
-				String ls = System.getProperty("line.separator");
-
 				while (matcher.find())
 				{
 					if (buffer == null)
@@ -91,7 +155,7 @@ public class Regex
 						buffer = new StringBuilder();
 					}
 					buffer.append(matcher.group());
-					buffer.append(ls);
+					buffer.append(split);
 				}
 
 				return buffer;
