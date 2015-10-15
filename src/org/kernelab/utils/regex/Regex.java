@@ -2,7 +2,9 @@ package org.kernelab.utils.regex;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.Reader;
+import java.io.Writer;
 import java.util.regex.Matcher;
 
 import org.kernelab.basis.Tools;
@@ -19,6 +21,7 @@ public class Regex
 	 * replace: $ as the back-reference
 	 * 
 	 * @param args
+	 * @throws IOException
 	 */
 	public static void main(String[] args)
 	{
@@ -72,17 +75,24 @@ public class Regex
 				{
 				}
 
-				CharSequence result = match(writer.getBuilder(), regex, flags, split, replace);
+				PrintWriter out = new PrintWriter(System.out);
 
-				if (result != null)
+				try
 				{
-					System.out.print(result);
+					match(out, writer.getBuilder(), regex, flags, split, replace);
 				}
+				catch (IOException e)
+				{
+					e.printStackTrace();
+				}
+
+				out.flush();
 			}
 		}
 	}
 
-	public static CharSequence match(CharSequence text, String regex, String flags, String split, String replace)
+	public static void match(Writer out, CharSequence text, String regex, String flags, String split, String replace)
+			throws IOException
 	{
 		boolean global = flags != null && flags.indexOf('g') != -1;
 
@@ -96,29 +106,17 @@ public class Regex
 			{
 				if (global)
 				{
-					StringBuilder buffer = null;
-
 					while (matcher.find())
 					{
-						if (buffer == null)
-						{
-							buffer = new StringBuilder(text.length() / 10);
-						}
-						buffer.append(matcher.group().replaceFirst(regex, replace));
-						buffer.append(split);
+						out.write(matcher.group().replaceFirst(regex, replace));
+						out.write(split);
 					}
-
-					return buffer;
 				}
 				else
 				{
 					if (matcher.find())
 					{
-						return matcher.group().replaceFirst(regex, replace);
-					}
-					else
-					{
-						return null;
+						out.write(matcher.group().replaceFirst(regex, replace));
 					}
 				}
 			}
@@ -131,14 +129,16 @@ public class Regex
 					while (matcher.find())
 					{
 						matcher.appendReplacement(buffer, replace);
+						out.write(buffer.toString());
+						buffer.delete(0, buffer.length());
 					}
-					matcher.appendTail(buffer);
 
-					return buffer;
+					matcher.appendTail(buffer);
+					out.write(buffer.toString());
 				}
 				else
 				{
-					return matcher.replaceFirst(replace);
+					out.write(matcher.replaceFirst(replace));
 				}
 			}
 		}
@@ -146,29 +146,17 @@ public class Regex
 		{
 			if (global)
 			{
-				StringBuilder buffer = null;
-
 				while (matcher.find())
 				{
-					if (buffer == null)
-					{
-						buffer = new StringBuilder();
-					}
-					buffer.append(matcher.group());
-					buffer.append(split);
+					out.write(matcher.group());
+					out.write(split);
 				}
-
-				return buffer;
 			}
 			else
 			{
 				if (matcher.find())
 				{
-					return matcher.group();
-				}
-				else
-				{
-					return null;
+					out.write(matcher.group());
 				}
 			}
 		}
