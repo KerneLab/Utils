@@ -16,7 +16,7 @@ public class Regex
 {
 	/**
 	 * regex: the regular expression<br />
-	 * flags: combination of musicx<br />
+	 * flags: combination of lodmusixr<br />
 	 * split: two hex-char such as 0A<br />
 	 * replace: $ as the back-reference
 	 * 
@@ -100,7 +100,7 @@ public class Regex
 
 		if (replace != null)
 		{
-			boolean extract = flags != null && flags.indexOf('x') != -1;
+			boolean extract = flags != null && flags.indexOf('r') != -1;
 
 			if (extract)
 			{
