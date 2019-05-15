@@ -480,8 +480,8 @@ public class OracleSQLExporter extends DataWriter
 
 	public static String SQLValue(Date value)
 	{
-		return OracleColumn
-				.importFormat(OracleColumn.DATE_TYPE_INDEX, Tools.getDateTimeString(value, DATE_JAVA_FORMAT));
+		return OracleColumn.importFormat(OracleColumn.DATE_TYPE_INDEX,
+				Tools.getDateTimeString(value, DATE_JAVA_FORMAT));
 	}
 
 	public static String SQLValue(Number value)
@@ -552,6 +552,8 @@ public class OracleSQLExporter extends DataWriter
 
 	private Set<String>					primaryKeys	= new LinkedHashSet<String>();
 
+	private int							commitRows;
+
 	public OracleSQLExporter exportInserts() throws SQLException
 	{
 		if (this.table != null)
@@ -571,6 +573,7 @@ public class OracleSQLExporter extends DataWriter
 			}
 			insert += ")\n";
 
+			int count = 0;
 			ResultSet rs = this.fetchTableData();
 			while (rs.next())
 			{
@@ -587,6 +590,13 @@ public class OracleSQLExporter extends DataWriter
 					}
 				}
 				this.print("\n);\n");
+
+				count++;
+				if (count >= this.getCommitRows() && this.getCommitRows() > 0)
+				{
+					count = 0;
+					this.printCommit();
+				}
 			}
 
 			this.table = null;
@@ -695,6 +705,7 @@ public class OracleSQLExporter extends DataWriter
 			String update = "UPDATE " + this.table;
 			String split = "";
 
+			int count = 0;
 			ResultSet rs = this.fetchTableData();
 			while (rs.next())
 			{
@@ -724,6 +735,13 @@ public class OracleSQLExporter extends DataWriter
 				}
 
 				this.print(";\n");
+
+				count++;
+				if (count >= this.getCommitRows() && this.getCommitRows() > 0)
+				{
+					count = 0;
+					this.printCommit();
+				}
 			}
 		}
 		return this;
@@ -780,9 +798,19 @@ public class OracleSQLExporter extends DataWriter
 		return this.kit.query(sql);
 	}
 
+	public int getCommitRows()
+	{
+		return commitRows;
+	}
+
 	public SQLKit getKit()
 	{
 		return kit;
+	}
+
+	protected void printCommit()
+	{
+		this.print("COMMIT;\n");
 	}
 
 	public OracleSQLExporter resetTableExportColumns(Iterable<String> columns)
@@ -829,6 +857,12 @@ public class OracleSQLExporter extends DataWriter
 	{
 		this.table = table.toUpperCase();
 		this.rule = rule;
+		return this;
+	}
+
+	public OracleSQLExporter setCommitRows(int commitRows)
+	{
+		this.commitRows = commitRows;
 		return this;
 	}
 
