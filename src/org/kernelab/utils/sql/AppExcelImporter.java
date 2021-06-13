@@ -70,11 +70,15 @@ public class AppExcelImporter extends JFrame implements ImportListener
 
 	private JTextField			tableNameText;
 
+	private JPanel				operationPanel;
+
 	private JButton				createTableButton;
 
 	private JButton				cleanTableButon;
 
 	private JButton				insertDataButton;
+
+	private JButton				dropTableButton;
 
 	private JProgressBar		progressBar;
 
@@ -89,13 +93,15 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		this.arrange();
 	}
 
-	public void arrange()
+	protected void arrange()
 	{
+		this.arrangeOperationPanel();
+
 		JPanel panel = new JPanel();
 
 		panel.setLayout(new GridBagLayout());
 		GridBagConstraints gbc = Tools.makePreferredGridBagConstraints();
-		gbc.insets = new Insets(1, 2, 1, 2);
+		gbc.insets = new Insets(1, 1, 0, 0);
 		gbc.gridx = 0;
 		gbc.gridy = 0;
 		gbc.weightx = 0;
@@ -145,7 +151,14 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		gbc.weighty = 0;
 		panel.add(this.filePathLabel, gbc);
 
+		gbc.gridwidth = 1;
+		gbc.gridx = 0;
 		gbc.gridy++;
+		gbc.weightx = 0;
+		panel.add(new JLabel("表格"), gbc);
+
+		gbc.gridx++;
+		gbc.weightx = 1;
 		panel.add(this.sheetIndexBox, gbc);
 
 		gbc.gridwidth = 1;
@@ -163,22 +176,8 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 1;
-		gbc.weighty = 1;
-		panel.add(this.createTableButton, gbc);
-
-		gbc.gridwidth = 2;
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 1;
-		gbc.weighty = 1;
-		panel.add(this.cleanTableButon, gbc);
-
-		gbc.gridwidth = 2;
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 1;
-		gbc.weighty = 1;
-		panel.add(this.insertDataButton, gbc);
+		gbc.weighty = 0;
+		panel.add(this.operationPanel, gbc);
 
 		gbc.gridwidth = 2;
 		gbc.gridx = 0;
@@ -205,7 +204,30 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		this.setMinimumSize(size);
 	}
 
-	public void config()
+	protected void arrangeOperationPanel()
+	{
+		JPanel panel = this.operationPanel;
+		panel.setLayout(new GridBagLayout());
+		GridBagConstraints gbc = Tools.makePreferredGridBagConstraints();
+		gbc.insets = new Insets(1, 1, 0, 0);
+		gbc.gridx = 0;
+		gbc.gridy = 0;
+		gbc.weightx = 1;
+		gbc.weighty = 0;
+		panel.add(this.createTableButton, gbc);
+
+		gbc.gridy++;
+		panel.add(this.cleanTableButon, gbc);
+
+		gbc.gridx++;
+		gbc.gridy = 0;
+		panel.add(this.insertDataButton, gbc);
+
+		gbc.gridy++;
+		panel.add(this.dropTableButton, gbc);
+	}
+
+	protected void config()
 	{
 		this.importer = new ExcelImporter();
 		this.importer.addListener(this);
@@ -242,6 +264,8 @@ public class AppExcelImporter extends JFrame implements ImportListener
 
 		this.tableNameText = new JTextField(30);
 
+		this.operationPanel = new JPanel();
+
 		this.createTableButton = new JButton("建表");
 		this.createTableButton.addActionListener(new ActionListener()
 		{
@@ -272,6 +296,16 @@ public class AppExcelImporter extends JFrame implements ImportListener
 			}
 		});
 
+		this.dropTableButton = new JButton("删表");
+		this.dropTableButton.addActionListener(new ActionListener()
+		{
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				doDropTable();
+			}
+		});
+
 		this.progressBar = new JProgressBar();
 
 		this.setTitle("Excel Importer");
@@ -279,14 +313,18 @@ public class AppExcelImporter extends JFrame implements ImportListener
 
 	protected void doCleanTable()
 	{
-		try
+		if (JOptionPane.showConfirmDialog(this, "是否确认从" + this.getTableName() + "中删除数据", "确认清表",
+				JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION)
 		{
-			prepareImporter().doClean();
-			hint("已成功清理数据表" + this.getTableName());
-		}
-		catch (Exception e)
-		{
-			hint("无法清理数据表", e);
+			try
+			{
+				prepareImporter().doClean();
+				hint("已成功清理数据表" + this.getTableName());
+			}
+			catch (Exception e)
+			{
+				hint("无法清理数据表", e);
+			}
 		}
 	}
 
@@ -308,6 +346,23 @@ public class AppExcelImporter extends JFrame implements ImportListener
 				}
 			}
 		}).start();
+	}
+
+	protected void doDropTable()
+	{
+		if (JOptionPane.showConfirmDialog(this, "是否确认删除数据表" + this.getTableName(), "确认删表", JOptionPane.YES_NO_OPTION,
+				JOptionPane.QUESTION_MESSAGE) == JOptionPane.YES_OPTION)
+		{
+			try
+			{
+				prepareImporter().doDrop();
+				hint("已成功删除数据表" + this.getTableName());
+			}
+			catch (Exception e)
+			{
+				hint("无法删除数据表", e);
+			}
+		}
 	}
 
 	protected void doInsertData()

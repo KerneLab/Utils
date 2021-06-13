@@ -459,6 +459,29 @@ public class ExcelImporter
 		}
 	}
 
+	public ExcelImporter doDrop() throws SQLException
+	{
+		SQLKit kit = this.getDb().getSQLKit();
+
+		try
+		{
+			String sql = this.makeDropTable();
+
+			Tools.debug(sql);
+
+			kit.execute(sql);
+
+			return this;
+		}
+		finally
+		{
+			if (kit != null)
+			{
+				kit.close();
+			}
+		}
+	}
+
 	public ExcelImporter doInsert() throws SQLException
 	{
 		final SQLKit kit = this.getDb().getSQLKit();
@@ -644,6 +667,11 @@ public class ExcelImporter
 						.union(Canal.of(new String[] { "PRIMARY KEY (`ROWID`)" })) //
 						.toString(",\r\n") //
 				+ "\r\n) COLLATE='utf8mb4_bin' ENGINE=InnoDB";
+	}
+
+	protected String makeDropTable()
+	{
+		return "DROP TABLE `" + this.getTable() + "`";
 	}
 
 	protected String makeInsert()
