@@ -2,6 +2,7 @@ package org.kernelab.utils.sql;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -9,6 +10,8 @@ import java.sql.SQLException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
+import java.util.List;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellValue;
@@ -320,14 +323,15 @@ public class ExcelImporter
 
 		try
 		{
+			String url = "jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8";
+
 			ExcelImporter imp = new ExcelImporter() //
-					.setDb(new GeneralDataBase(
-							"jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8", "test", "test")) //
+					.addListener(new DefaultImportListener(50)) //
+					.setDb(new GeneralDataBase(url, "test", "test")) //
 					.setFile(file) //
 					.setSheetIndex(0) //
 					.setTable("jdl_test_import") //
-					.addListener(new DefaultImportListener(50)) //
-					.load();
+			;
 
 			Tools.debug("Analyzing...");
 			Tools.debug(imp.makeCreateTable());
@@ -347,6 +351,8 @@ public class ExcelImporter
 	private File						file;
 
 	private InputStream					inputStream;
+
+	private String[]					sheets;
 
 	private int							sheetIndex;
 
@@ -601,6 +607,11 @@ public class ExcelImporter
 		return sheetIndex;
 	}
 
+	public String[] getSheets()
+	{
+		return sheets;
+	}
+
 	public String getTable()
 	{
 		return table;
@@ -609,29 +620,6 @@ public class ExcelImporter
 	protected Workbook getWorkbook()
 	{
 		return workbook;
-	}
-
-	public ExcelImporter load() throws IOException
-	{
-		if (this.getInputStream() == null)
-		{
-			if (this.getFile() != null)
-			{
-				this.setInputStream(new FileInputStream(this.getFile()));
-			}
-		}
-
-		this.setWorkbook(new XSSFWorkbook(this.getInputStream()));
-
-		this.setFe(this.getWorkbook().getCreationHelper().createFormulaEvaluator());
-
-		this.setSheet(this.getWorkbook().getSheetAt(this.getSheetIndex()));
-
-		this.setDataRows(this.getSheet().getLastRowNum() - this.getSheet().getFirstRowNum());
-
-		this.setMeta(this.makeMetaByHeader());
-
-		return this;
 	}
 
 	protected String makeClean()
@@ -722,15 +710,27 @@ public class ExcelImporter
 		return this;
 	}
 
-	public ExcelImporter setFile(File file)
+	public ExcelImporter setFile(File file) throws FileNotFoundException, IOException
 	{
 		this.file = file;
+
+		if (file != null)
+		{
+			this.setInputStream(new FileInputStream(file));
+		}
+
 		return this;
 	}
 
-	public ExcelImporter setInputStream(InputStream is)
+	public ExcelImporter setInputStream(InputStream is) throws IOException
 	{
 		this.inputStream = is;
+
+		if (is != null)
+		{
+			this.setWorkbook(new XSSFWorkbook(is));
+		}
+
 		return this;
 	}
 
@@ -752,9 +752,23 @@ public class ExcelImporter
 		return this;
 	}
 
-	public ExcelImporter setSheetIndex(int sheetIndex)
+	public ExcelImporter setSheetIndex(int index)
 	{
-		this.sheetIndex = sheetIndex;
+		this.sheetIndex = index;
+
+		if (index >= 0)
+		{
+			this.setSheet(this.getWorkbook().getSheetAt(index));
+			this.setDataRows(this.getSheet().getLastRowNum() - this.getSheet().getFirstRowNum());
+			this.setMeta(this.makeMetaByHeader());
+		}
+
+		return this;
+	}
+
+	public ExcelImporter setSheets(String[] sheets)
+	{
+		this.sheets = sheets;
 		return this;
 	}
 
@@ -767,6 +781,22 @@ public class ExcelImporter
 	protected ExcelImporter setWorkbook(Workbook wb)
 	{
 		this.workbook = wb;
+
+		if (wb != null)
+		{
+			this.setFe(wb.getCreationHelper().createFormulaEvaluator());
+
+			int sheets = wb.getNumberOfSheets();
+
+			List<String> names = new LinkedList<String>();
+			for (int i = 0; i < sheets; i++)
+			{
+				names.add(wb.getSheetName(i));
+			}
+
+			this.setSheets(names.toArray(new String[0]));
+		}
+
 		return this;
 	}
 }

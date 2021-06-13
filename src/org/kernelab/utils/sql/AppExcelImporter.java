@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -49,33 +50,33 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		app.showApp();
 	}
 
-	private ExcelImporter	importer;
+	private ExcelImporter		importer;
 
-	private File			openDir	= new File("./");
+	private File				openDir	= new File("./");
 
-	private JTextField		jdbcDbText;
+	private JTextField			jdbcDbText;
 
-	private JTextField		jdbcUsrText;
+	private JTextField			jdbcUsrText;
 
-	private JPasswordField	jdbcPwdText;
+	private JPasswordField		jdbcPwdText;
 
-	private JButton			jdbcLinkButton;
+	private JButton				jdbcLinkButton;
 
-	private JButton			openFileButton;
+	private JButton				openFileButton;
 
-	private JLabel			sheetIndexLabel;
+	private JLabel				filePathLabel;
 
-	private JLabel			filePathLabel;
+	private JComboBox<String>	sheetIndexBox;
 
-	private JTextField		tableNameText;
+	private JTextField			tableNameText;
 
-	private JButton			createTableButton;
+	private JButton				createTableButton;
 
-	private JButton			cleanTableButon;
+	private JButton				cleanTableButon;
 
-	private JButton			insertDataButton;
+	private JButton				insertDataButton;
 
-	private JProgressBar	progressBar;
+	private JProgressBar		progressBar;
 
 	public AppExcelImporter()
 	{
@@ -94,7 +95,7 @@ public class AppExcelImporter extends JFrame implements ImportListener
 
 		panel.setLayout(new GridBagLayout());
 		GridBagConstraints gbc = Tools.makePreferredGridBagConstraints();
-		gbc.insets = new Insets(2, 4, 2, 4);
+		gbc.insets = new Insets(1, 2, 1, 2);
 		gbc.gridx = 0;
 		gbc.gridy = 0;
 		gbc.weightx = 0;
@@ -123,68 +124,67 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		gbc.weightx = 1;
 		panel.add(this.jdbcPwdText, gbc);
 
+		gbc.gridwidth = 2;
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 1;
-		gbc.gridwidth = 2;
 		panel.add(this.jdbcLinkButton, gbc);
 
+		gbc.gridwidth = 2;
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 1;
-		gbc.gridwidth = 2;
 		panel.add(this.openFileButton, gbc);
 
+		gbc.gridwidth = 2;
 		gbc.gridx = 0;
 		gbc.gridy++;
-		gbc.weightx = 0;
-		gbc.weighty = 0;
-		gbc.gridwidth = 1;
-		panel.add(this.sheetIndexLabel, gbc);
-
-		gbc.gridx++;
 		gbc.weightx = 1;
+		gbc.weighty = 0;
 		panel.add(this.filePathLabel, gbc);
 
+		gbc.gridy++;
+		panel.add(this.sheetIndexBox, gbc);
+
+		gbc.gridwidth = 1;
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 0;
 		gbc.weighty = 0;
-		gbc.gridwidth = 1;
 		panel.add(new JLabel("表名"), gbc);
 
 		gbc.gridx++;
 		gbc.weightx = 1;
 		panel.add(this.tableNameText, gbc);
 
+		gbc.gridwidth = 2;
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 1;
-		gbc.gridwidth = 2;
 		panel.add(this.createTableButton, gbc);
 
+		gbc.gridwidth = 2;
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 1;
-		gbc.gridwidth = 2;
 		panel.add(this.cleanTableButon, gbc);
 
+		gbc.gridwidth = 2;
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 1;
-		gbc.gridwidth = 2;
 		panel.add(this.insertDataButton, gbc);
 
+		gbc.gridwidth = 2;
 		gbc.gridx = 0;
 		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 0;
-		gbc.gridwidth = 2;
 		panel.add(this.progressBar, gbc);
 
 		//////////////////////////////////////////////
@@ -236,9 +236,9 @@ public class AppExcelImporter extends JFrame implements ImportListener
 			}
 		});
 
-		this.sheetIndexLabel = new JLabel(" ");
-
 		this.filePathLabel = new JLabel(" ");
+
+		this.sheetIndexBox = new JComboBox<String>();
 
 		this.tableNameText = new JTextField(30);
 
@@ -281,7 +281,7 @@ public class AppExcelImporter extends JFrame implements ImportListener
 	{
 		try
 		{
-			this.getImporter().setTable(this.getTableName()).doClean();
+			prepareImporter().doClean();
 			hint("已成功清理数据表" + this.getTableName());
 		}
 		catch (Exception e)
@@ -299,7 +299,7 @@ public class AppExcelImporter extends JFrame implements ImportListener
 			{
 				try
 				{
-					getImporter().setTable(getTableName()).doCreate();
+					prepareImporter().doCreate();
 					hint("已成功创建数据表" + getTableName());
 				}
 				catch (Exception e)
@@ -319,7 +319,7 @@ public class AppExcelImporter extends JFrame implements ImportListener
 			{
 				try
 				{
-					getImporter().setTable(getTableName()).doInsert();
+					prepareImporter().doInsert();
 					hint("已将数据导入至" + getTableName());
 				}
 				catch (Exception e)
@@ -373,22 +373,20 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION)
 		{
 			File file = fc.getSelectedFile();
+			this.sheetIndexBox.removeAllItems();
 			this.openDir = file.getParentFile();
 
-			String indexText = JOptionPane.showInputDialog(this, "请输入待导入的Sheet序号", "0");
 			try
 			{
-				int index = Integer.parseInt(indexText);
-				this.getImporter().setFile(file).setSheetIndex(index).load();
-				this.sheetIndexLabel.setText(String.valueOf(this.getImporter().getSheetIndex()));
-				this.sheetIndexLabel
-						.setToolTipText("第" + String.valueOf(this.getImporter().getSheetIndex()) + "个Sheet");
+				this.getImporter().setFile(file);
+
+				for (String s : this.getImporter().getSheets())
+				{
+					this.sheetIndexBox.addItem(s);
+				}
+
 				this.filePathLabel.setText(this.getImporter().getFile().getAbsolutePath());
 				this.filePathLabel.setToolTipText(this.getImporter().getFile().getAbsolutePath());
-			}
-			catch (NumberFormatException e)
-			{
-				hint("非法的序号" + indexText, e);
 			}
 			catch (IOException e)
 			{
@@ -400,6 +398,11 @@ public class AppExcelImporter extends JFrame implements ImportListener
 	public ExcelImporter getImporter()
 	{
 		return importer;
+	}
+
+	protected int getSheetIndex()
+	{
+		return this.sheetIndexBox.getSelectedIndex();
 	}
 
 	protected String getTableName()
@@ -463,6 +466,11 @@ public class AppExcelImporter extends JFrame implements ImportListener
 	public void onImporting(double percent)
 	{
 		this.progressBar.setValue((int) (100 * percent));
+	}
+
+	protected ExcelImporter prepareImporter()
+	{
+		return this.getImporter().setSheetIndex(this.getSheetIndex()).setTable(this.getTableName());
 	}
 
 	public void setImporter(ExcelImporter importer)
