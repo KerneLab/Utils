@@ -24,8 +24,10 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.kernelab.basis.Canal;
 import org.kernelab.basis.Canal.Action;
 import org.kernelab.basis.Canal.Tuple2;
+import org.kernelab.basis.Entrance;
 import org.kernelab.basis.Mapper;
 import org.kernelab.basis.Tools;
+import org.kernelab.basis.Variable;
 import org.kernelab.basis.sql.DataBase;
 import org.kernelab.basis.sql.DataBase.GeneralDataBase;
 import org.kernelab.basis.sql.SQLKit;
@@ -319,28 +321,42 @@ public class ExcelImporter
 
 	public static void main(String[] args)
 	{
-		File file = new File("./dat/test.xlsx");
+		Entrance entr = new Entrance().handle(args);
+
+		String url = entr.parameter("url");
+		String usr = entr.parameter("usr");
+		String pwd = entr.parameter("pwd");
+		File file = new File(entr.parameter("file"));
+		int sheet = Variable.asInteger(entr.parameter("sheet"), 0);
+		String table = entr.parameter("table");
+		String action = entr.parameter("action");
 
 		try
 		{
-			String url = "jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=UTF-8";
-
 			ExcelImporter imp = new ExcelImporter() //
 					.addListener(new DefaultImportListener(50)) //
-					.setDb(new GeneralDataBase(url, "test", "test")) //
+					.setDb(new GeneralDataBase(url, usr, pwd)) //
 					.setFile(file) //
-					.setSheetIndex(0) //
-					.setTable("jdl_test_import") //
+					.setSheetIndex(sheet) //
+					.setTable(table) //
 			;
 
-			Tools.debug("Analyzing...");
-			Tools.debug(imp.makeCreateTable());
-
-			Tools.debug("Cleaning...");
-			imp.doClean();
-
-			Tools.debug("Importing...");
-			imp.doInsert();
+			if ("create".equalsIgnoreCase(action))
+			{
+				imp.doCreate();
+			}
+			else if ("clean".equalsIgnoreCase(action))
+			{
+				imp.doClean();
+			}
+			else if ("insert".equalsIgnoreCase(action))
+			{
+				imp.doInsert();
+			}
+			else if ("drop".equalsIgnoreCase(action))
+			{
+				imp.doDrop();
+			}
 		}
 		catch (Exception e)
 		{
