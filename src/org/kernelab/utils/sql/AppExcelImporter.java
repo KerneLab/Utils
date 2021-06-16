@@ -1,5 +1,6 @@
 package org.kernelab.utils.sql;
 
+import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -102,89 +103,38 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		panel.setLayout(new GridBagLayout());
 		GridBagConstraints gbc = Tools.makePreferredGridBagConstraints();
 		gbc.insets = new Insets(1, 1, 0, 0);
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		gbc.weightx = 0;
+		gbc.weightx = 1;
 		gbc.weighty = 0;
-		panel.add(new JLabel("数据库"), gbc);
-
-		gbc.gridx++;
-		gbc.weightx = 1;
-		panel.add(this.jdbcDbText, gbc);
-
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 0;
-		panel.add(new JLabel("用户名"), gbc);
-
-		gbc.gridx++;
-		gbc.weightx = 1;
-		panel.add(this.jdbcUsrText, gbc);
-
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 0;
-		panel.add(new JLabel("密码"), gbc);
-
-		gbc.gridx++;
-		gbc.weightx = 1;
-		panel.add(this.jdbcPwdText, gbc);
+		Tools.layoutComponentsFixedLeft(panel, new Component[][] { //
+				new Component[] { new JLabel("数据库"), this.jdbcDbText }, //
+				new Component[] { new JLabel("用户名"), this.jdbcUsrText }, //
+				new Component[] { new JLabel("密码"), this.jdbcPwdText } //
+		}, gbc);
 
 		gbc.gridwidth = 2;
-		gbc.gridx = 0;
-		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 1;
-		panel.add(this.jdbcLinkButton, gbc);
-
-		gbc.gridwidth = 2;
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 1;
-		gbc.weighty = 1;
-		panel.add(this.openFileButton, gbc);
-
-		gbc.gridwidth = 2;
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 1;
-		gbc.weighty = 0;
-		panel.add(this.filePathLabel, gbc);
+		Tools.layoutComponentsInColumn(panel, new Component[] { //
+				this.jdbcLinkButton, //
+				this.openFileButton, //
+				this.filePathLabel //
+		}, gbc);
 
 		gbc.gridwidth = 1;
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 0;
-		panel.add(new JLabel("表格"), gbc);
-
-		gbc.gridx++;
 		gbc.weightx = 1;
-		panel.add(this.sheetIndexBox, gbc);
-
-		gbc.gridwidth = 1;
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 0;
 		gbc.weighty = 0;
-		panel.add(new JLabel("表名"), gbc);
-
-		gbc.gridx++;
-		gbc.weightx = 1;
-		panel.add(this.tableNameText, gbc);
+		Tools.layoutComponentsFixedLeft(panel, new Component[][] { //
+				new Component[] { new JLabel("表格"), this.sheetIndexBox }, //
+				new Component[] { new JLabel("表名"), this.tableNameText }, //
+		}, gbc);
 
 		gbc.gridwidth = 2;
-		gbc.gridx = 0;
-		gbc.gridy++;
 		gbc.weightx = 1;
 		gbc.weighty = 0;
-		panel.add(this.operationPanel, gbc);
-
-		gbc.gridwidth = 2;
-		gbc.gridx = 0;
-		gbc.gridy++;
-		gbc.weightx = 1;
-		gbc.weighty = 0;
-		panel.add(this.progressBar, gbc);
+		Tools.layoutComponentsInColumn(panel, new Component[] { //
+				this.operationPanel, //
+				this.progressBar //
+		}, gbc);
 
 		//////////////////////////////////////////////
 
@@ -210,21 +160,12 @@ public class AppExcelImporter extends JFrame implements ImportListener
 		panel.setLayout(new GridBagLayout());
 		GridBagConstraints gbc = Tools.makePreferredGridBagConstraints();
 		gbc.insets = new Insets(1, 1, 0, 0);
-		gbc.gridx = 0;
-		gbc.gridy = 0;
 		gbc.weightx = 1;
 		gbc.weighty = 0;
-		panel.add(this.createTableButton, gbc);
-
-		gbc.gridy++;
-		panel.add(this.cleanTableButon, gbc);
-
-		gbc.gridx++;
-		gbc.gridy = 0;
-		panel.add(this.insertDataButton, gbc);
-
-		gbc.gridy++;
-		panel.add(this.dropTableButton, gbc);
+		Tools.layoutComponentsEvenly(panel, new Component[][] { //
+				new Component[] { this.createTableButton, this.cleanTableButon }, //
+				new Component[] { this.insertDataButton, this.dropTableButton } //
+		}, gbc);
 	}
 
 	protected void config()
