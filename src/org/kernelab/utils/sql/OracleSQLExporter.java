@@ -324,7 +324,7 @@ public class OracleSQLExporter extends DataWriter
 
 	public static String		TIMESTAMP_SQL_FORMAT	= "YYYY-MM-DD HH24:MI:SS.FF";
 
-	public static String		TABLE_COLUMNS			= "ALL_TAB_COLUMNS";
+	public static String		TABLE_COLUMNS			= "USER_TAB_COLUMNS";
 
 	public static int			LINE_SIZE				= 500;
 
