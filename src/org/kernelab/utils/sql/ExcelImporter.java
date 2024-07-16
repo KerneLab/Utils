@@ -513,10 +513,10 @@ public class ExcelImporter
 				@Override
 				public Object[] map(Row row)
 				{
-					return Canal.of(row).zipWithIndex().map(new Mapper<Tuple2<Cell, Long>, Object>()
+					return Canal.of(row).zipWithIndex().map(new Mapper<Tuple2<Cell, Integer>, Object>()
 					{
 						@Override
-						public Object map(Tuple2<Cell, Long> el)
+						public Object map(Tuple2<Cell, Integer> el)
 						{
 							return CellContent(el._1, getFe());
 						}
