@@ -18,35 +18,35 @@ public class AppBatchReplacer
 			fc.setMultiSelectionEnabled(false);
 			fc.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
-			fc.setDialogTitle("Open Source File ...");
+			fc.setDialogTitle("Open Mapper File ...");
 			if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
 			{
-				File source = fc.getSelectedFile();
+				File mapper = fc.getSelectedFile();
 
-				fc.setCurrentDirectory(source.getParentFile());
-				fc.setDialogTitle("Open Mapper File ...");
+				fc.setCurrentDirectory(mapper.getParentFile());
+				fc.setDialogTitle("Open Source File ...");
 				if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
 				{
-					File mapper = fc.getSelectedFile();
+					File source = fc.getSelectedFile();
 
-					fc.setCurrentDirectory(mapper.getParentFile());
+					fc.setCurrentDirectory(source.getParentFile());
 					fc.setDialogTitle("Open Target File ...");
 					if (fc.showOpenDialog(null) == JFileChooser.APPROVE_OPTION)
 					{
 						File target = fc.getSelectedFile();
 
-						if (target.equals(source))
-						{
-							throw new IllegalArgumentException("target file can not be the same as source file.");
-						}
 						if (target.equals(mapper))
 						{
 							throw new IllegalArgumentException("target file can not be the same as mapper file.");
 						}
+						if (target.equals(source))
+						{
+							throw new IllegalArgumentException("target file can not be the same as source file.");
+						}
 
 						JSAN params = new JSAN() //
-								.addLast("-src", source.getAbsolutePath(), //
-										"-map", mapper.getAbsolutePath(), //
+								.addLast("-map", mapper.getAbsolutePath(), //
+										"-src", source.getAbsolutePath(), //
 										"-dst", target.getAbsolutePath() //
 								);
 
